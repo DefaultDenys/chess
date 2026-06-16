@@ -1,16 +1,16 @@
 use bevy::{
+    asset::AssetServer,
     color::Color,
-    ecs::system::Commands,
+    ecs::system::{Commands, Res},
     math::Vec2,
-    sprite::{Sprite, Text2d},
-    text::TextColor,
+    sprite::Sprite,
     transform::components::Transform,
 };
 
 use crate::{
     board::{BOARD_SQUARES, SQUARE_SIZE},
-    coordinate_utils,
-    pieces::{BoardPosition, Piece, PieceColor, PieceKind},
+    chess_pieces::{BoardPosition, Piece, PieceColor, PieceKind, piece_sprites},
+    utils::coordinate_utils,
 };
 
 pub fn spawn_board(mut commands: Commands) {
@@ -34,7 +34,9 @@ pub fn spawn_board(mut commands: Commands) {
     }
 }
 
-pub fn spawn_pieces(mut commands: Commands) {
+pub fn spawn_pieces(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let texture =  piece_sprites::load_pieces_texture(&asset_server);
+
     const BACK_RANK: [PieceKind; 8] = [
         PieceKind::Rook,
         PieceKind::Knight,
@@ -57,28 +59,14 @@ pub fn spawn_pieces(mut commands: Commands) {
             };
 
             if let Some((color, kind)) = piece {
-                let letter = match kind {
-                    PieceKind::Pawn => "P",
-                    PieceKind::Knight => "N",
-                    PieceKind::Bishop => "B",
-                    PieceKind::Rook => "R",
-                    PieceKind::Queen => "Q",
-                    PieceKind::King => "K",
-                };
-
-                let text_color = match color {
-                    PieceColor::White => Color::WHITE,
-                    PieceColor::Black => Color::BLACK,
-                };
-
+                let sprite = piece_sprites::piece_sprite(kind, color, texture.clone());
                 let transform =
                     Transform::from_translation(coordinate_utils::square_to_world(file, rank, 1.0));
 
                 commands.spawn((
                     Piece { color, kind },
                     BoardPosition { file, rank },
-                    Text2d::new(letter),
-                    TextColor(text_color),
+                    sprite,
                     transform,
                 ));
             }
