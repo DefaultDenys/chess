@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::board::SQUARE_SIZE;
+use crate::board::chess_board::SQUARE_SIZE;
 use crate::chess_pieces::{PieceColor, PieceKind};
 
 const SPRITE_SHEET_PATH: &str = "pieces/chess_pieces.png";

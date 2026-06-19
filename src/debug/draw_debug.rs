@@ -6,7 +6,7 @@ use bevy::{
     transform::components::Transform,
 };
 
-use crate::{board::SQUARE_SIZE, chess_pieces::Piece};
+use crate::{board::chess_board::SQUARE_SIZE, chess_pieces::Piece};
 
 pub fn debug_piece_bounds(mut gizmos: Gizmos, pieces: Query<&Transform, With<Piece>>) {
     for transform in &pieces {
