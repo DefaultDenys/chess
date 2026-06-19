@@ -8,8 +8,11 @@ use bevy::{
 };
 
 use crate::{
-    board::{BOARD_SQUARES, SQUARE_SIZE},
-    chess_pieces::{BoardPosition, Piece, PieceColor, PieceKind, piece_sprites},
+    board::{
+        chess_board::{BOARD_SQUARES, SQUARE_SIZE},
+        game_board::Board,
+    },
+    chess_pieces::{BoardPosition, piece_sprites},
     utils::coordinate_utils,
 };
 
@@ -34,41 +37,17 @@ pub fn spawn_board(mut commands: Commands) {
     }
 }
 
-pub fn spawn_pieces(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let texture =  piece_sprites::load_pieces_texture(&asset_server);
-
-    const BACK_RANK: [PieceKind; 8] = [
-        PieceKind::Rook,
-        PieceKind::Knight,
-        PieceKind::Bishop,
-        PieceKind::Queen,
-        PieceKind::King,
-        PieceKind::Bishop,
-        PieceKind::Knight,
-        PieceKind::Rook,
-    ];
+pub fn spawn_pieces(mut commands: Commands, asset_server: Res<AssetServer>, board: Res<Board>) {
+    let texture = piece_sprites::load_pieces_texture(&asset_server);
 
     for file in 0..BOARD_SQUARES {
         for rank in 0..BOARD_SQUARES {
-            let piece = match rank {
-                0 => Some((PieceColor::White, BACK_RANK[file as usize])),
-                1 => Some((PieceColor::White, PieceKind::Pawn)),
-                6 => Some((PieceColor::Black, PieceKind::Pawn)),
-                7 => Some((PieceColor::Black, BACK_RANK[file as usize])),
-                _ => None,
-            };
-
-            if let Some((color, kind)) = piece {
-                let sprite = piece_sprites::piece_sprite(kind, color, texture.clone());
+            if let Some(piece) = board.get(file as usize, rank as usize) {
+                let sprite = piece_sprites::piece_sprite(piece.kind, piece.color, texture.clone());
                 let transform =
                     Transform::from_translation(coordinate_utils::square_to_world(file, rank, 1.0));
 
-                commands.spawn((
-                    Piece { color, kind },
-                    BoardPosition { file, rank },
-                    sprite,
-                    transform,
-                ));
+                commands.spawn((piece, BoardPosition { file, rank }, sprite, transform));
             }
         }
     }
