@@ -1,6 +1,5 @@
 use bevy::{
     asset::AssetServer,
-    color::Color,
     ecs::system::{Commands, Res},
     math::Vec2,
     sprite::Sprite,
@@ -13,19 +12,18 @@ use crate::{
         game_board::Board,
     },
     chess_pieces::{BoardPosition, piece_sprites},
+    theme::ACTIVE_THEME,
     utils::coordinate_utils,
 };
 
 pub fn spawn_board(mut commands: Commands) {
-    let light_color = Color::srgb(0.9, 0.9, 0.8);
-    let dark_color = Color::srgb(0.3, 0.3, 0.25);
-
     for file in 0..BOARD_SQUARES {
         for rank in 0..BOARD_SQUARES {
+            // a1 (file 0, rank 0) is a dark square.
             let color = if (file + rank) % 2 == 0 {
-                light_color
+                ACTIVE_THEME.dark_square
             } else {
-                dark_color
+                ACTIVE_THEME.light_square
             };
 
             let sprite = Sprite::from_color(color, Vec2::splat(SQUARE_SIZE));

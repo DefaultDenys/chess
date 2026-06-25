@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::board::game_board::Board;
 use crate::moves::{PieceQuery, try_move};
+use crate::sound::SoundAssets;
 use crate::utils::coordinate_utils;
 
 use super::selection::Selection;
@@ -18,6 +19,7 @@ pub fn handle_mouse(
     mut board: ResMut<Board>,
     mut selection: ResMut<Selection>,
     mut pieces: PieceQuery,
+    sounds: Res<SoundAssets>,
 ) {
     let window = window.into_inner();
     let (camera, camera_transform) = camera.into_inner();
@@ -30,7 +32,7 @@ pub fn handle_mouse(
     };
     let square = coordinate_utils::world_to_square(world);
 
-    // --- Press: select your own piece (no movement yet), or complete a click-to-move ---
+    // --- Press: select your own piece, or try to complete a click-to-move ---
     if mouse.just_pressed(MouseButton::Left) {
         match square {
             None => selection.clear(),
@@ -40,8 +42,11 @@ pub fn handle_mouse(
                     selection.press_origin = Some(world);
                     selection.dragging = false;
                 } else if let Some(from) = selection.selected {
-                    try_move(&mut commands, &mut board, &mut pieces, from, (file, rank));
-                    selection.clear();
+                    // Move only if legal; otherwise keep the selection so the
+                    // player can pick a different target.
+                    if try_move(&mut commands, &mut board, &mut pieces, &sounds, from, (file, rank)) {
+                        selection.clear();
+                    }
                 } else {
                     selection.clear();
                 }
@@ -66,29 +71,28 @@ pub fn handle_mouse(
         }
     }
 
-    // --- Release ---
+    // --- Release: drop the dragged piece (move if legal, else snap back) ---
     if mouse.just_released(MouseButton::Left) {
         if let Some((from_file, from_rank)) = selection.selected {
             if selection.dragging {
-                match square {
-                    Some((file, rank))
-                        if (file, rank) != (from_file, from_rank)
-                            && !is_own_piece(&board, file, rank) =>
-                    {
-                        try_move(
-                            &mut commands,
-                            &mut board,
-                            &mut pieces,
-                            (from_file, from_rank),
-                            (file, rank),
-                        );
-                        selection.clear();
-                    }
-                    _ => {
-                        snap_to_square(&mut pieces, from_file, from_rank);
-                        selection.press_origin = None;
-                        selection.dragging = false;
-                    }
+                let moved = match square {
+                    Some((file, rank)) => try_move(
+                        &mut commands,
+                        &mut board,
+                        &mut pieces,
+                        &sounds,
+                        (from_file, from_rank),
+                        (file, rank),
+                    ),
+                    None => false,
+                };
+
+                if moved {
+                    selection.clear();
+                } else {
+                    snap_to_square(&mut pieces, from_file, from_rank);
+                    selection.press_origin = None;
+                    selection.dragging = false;
                 }
             } else {
                 selection.press_origin = None;
