@@ -4,6 +4,7 @@ mod chess_pieces;
 mod debug;
 mod input;
 mod moves;
+mod rules;
 mod utils;
 
 use bevy::{camera::ScalingMode, prelude::*};
