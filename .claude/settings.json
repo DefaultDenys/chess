@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/denys/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/**)",
+      "Read(//c/Users/denys/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_internal-0.18.1/src/**)",
+      "Bash(awk '/pub mod prelude/,/^}/' /c/Users/denys/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_mesh-0.18.1/src/lib.rs)",
+      "Bash(awk '/pub struct Annulus/,/^}/' /c/Users/denys/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_math-0.18.1/src/primitives/dim2.rs)",
+      "Bash(python -c \"from PIL import Image; print\\('wk size:', Image.open\\('assets/pieces/wk.png'\\).size, Image.open\\('assets/pieces/wk.png'\\).mode\\)\")",
+      "Bash(set -e)",
+      "Bash(mv wk.png white_king.png)",
+      "Bash(mv wq.png white_queen.png)",
+      "Bash(mv wr.png white_rook.png)",
+      "Bash(mv wb.png white_bishop.png)",
+      "Bash(python -)",
+      "Bash(rm -f f:/Coding/Rust/chess/assets/pieces/white_*.png f:/Coding/Rust/chess/assets/pieces/black_*.png *)",
+      "Bash(python -c \"from PIL import Image; print\\('chess_pieces.png:', Image.open\\(r'f:/Coding/Rust/chess/assets/pieces/chess_pieces.png'\\).size\\); print\\('chess_peaces_new.png:', Image.open\\(r'f:/Coding/Rust/chess/assets/pieces/chess_peaces_new.png'\\).size\\)\")",
+      "Bash(awk '/^default = \\\\[/,/\\\\]/' /c/Users/denys/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_internal-0.18.1/Cargo.toml)",
+      "Bash(reg=\"/c/Users/denys/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f\"; \\\\ *)",
+      "Bash(awk 'NR>=2432 && /^\\\\]/{print NR\": \"$0; exit} NR>=2432{print NR\": \"$0}' /c/Users/denys/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy-0.18.1/Cargo.toml)",
+      "Bash(python -c \"import numpy; print\\('numpy', numpy.__version__\\)\")",
+      "Bash(python -c \"import scipy; print\\('scipy', scipy.__version__\\)\")"
+    ],
+    "additionalDirectories": [
+      "f:\\Coding\\Rust\\chess\\assets\\pieces",
+      "C:\\Users\\denys\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\bevy-0.18.1"
+    ]
+  }
+}

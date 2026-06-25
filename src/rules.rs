@@ -31,6 +31,19 @@ pub fn is_legal_move(board: &Board, from: (i32, i32), to: (i32, i32)) -> bool {
     }
 }
 
+/// All squares the piece on `from` can legally move to right now.
+pub fn legal_moves(board: &Board, from: (i32, i32)) -> Vec<(i32, i32)> {
+    let mut moves = Vec::new();
+    for file in 0..BOARD_SQUARES {
+        for rank in 0..BOARD_SQUARES {
+            if is_legal_move(board, from, (file, rank)) {
+                moves.push((file, rank));
+            }
+        }
+    }
+    moves
+}
+
 fn on_board(file: i32, rank: i32) -> bool {
     (0..BOARD_SQUARES).contains(&file) && (0..BOARD_SQUARES).contains(&rank)
 }

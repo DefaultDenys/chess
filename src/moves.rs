@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use crate::board::game_board::Board;
 use crate::chess_pieces::{BoardPosition, Piece, PieceColor};
 use crate::rules;
+use crate::sound::SoundAssets;
 use crate::utils::coordinate_utils;
 
 pub type PieceQuery<'w, 's> =
@@ -13,12 +14,17 @@ pub fn try_move(
     commands: &mut Commands,
     board: &mut Board,
     pieces: &mut PieceQuery,
+    sounds: &SoundAssets,
     from: (i32, i32),
     to: (i32, i32),
 ) -> bool {
     if !rules::is_legal_move(board, from, to) {
         return false;
     }
+
+    // A capture if the target square is occupied (it's an enemy, since legality
+    // already rejected capturing your own piece).
+    let is_capture = board.get(to.0 as usize, to.1 as usize).is_some();
 
     // Capture: despawn any entity on the target square.
     for (entity, pos, _) in pieces.iter() {
@@ -46,6 +52,19 @@ pub fn try_move(
         PieceColor::White => PieceColor::Black,
         PieceColor::Black => PieceColor::White,
     };
+
+    // Play the matching sound (despawns itself once finished).
+    let sound = if is_capture {
+        sounds.capture.clone()
+    } else {
+        sounds.move_piece.clone()
+    };
+    commands.spawn((
+        AudioPlayer::new(sound),
+        PlaybackSettings {
+            ..PlaybackSettings::DESPAWN
+        },
+    ));
 
     true
 }

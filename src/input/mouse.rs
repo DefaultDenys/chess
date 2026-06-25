@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::board::game_board::Board;
 use crate::moves::{PieceQuery, try_move};
+use crate::sound::SoundAssets;
 use crate::utils::coordinate_utils;
 
 use super::selection::Selection;
@@ -18,6 +19,7 @@ pub fn handle_mouse(
     mut board: ResMut<Board>,
     mut selection: ResMut<Selection>,
     mut pieces: PieceQuery,
+    sounds: Res<SoundAssets>,
 ) {
     let window = window.into_inner();
     let (camera, camera_transform) = camera.into_inner();
@@ -42,7 +44,7 @@ pub fn handle_mouse(
                 } else if let Some(from) = selection.selected {
                     // Move only if legal; otherwise keep the selection so the
                     // player can pick a different target.
-                    if try_move(&mut commands, &mut board, &mut pieces, from, (file, rank)) {
+                    if try_move(&mut commands, &mut board, &mut pieces, &sounds, from, (file, rank)) {
                         selection.clear();
                     }
                 } else {
@@ -78,6 +80,7 @@ pub fn handle_mouse(
                         &mut commands,
                         &mut board,
                         &mut pieces,
+                        &sounds,
                         (from_file, from_rank),
                         (file, rank),
                     ),

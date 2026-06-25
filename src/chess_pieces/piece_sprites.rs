@@ -2,13 +2,10 @@ use bevy::prelude::*;
 
 use crate::board::chess_board::SQUARE_SIZE;
 use crate::chess_pieces::{PieceColor, PieceKind};
-
-const SPRITE_SHEET_PATH: &str = "pieces/chess_pieces.png";
-const IMAGE_WIDTH: f32 = 1536.0;
-const IMAGE_HEIGHT: f32 = 512.0;
+use crate::theme::ACTIVE_THEME;
 
 pub fn load_pieces_texture(asset_server: &AssetServer) -> Handle<Image> {
-    asset_server.load(SPRITE_SHEET_PATH)
+    asset_server.load(ACTIVE_THEME.sheet_path)
 }
 
 pub fn piece_sprite(kind: PieceKind, color: PieceColor, texture: Handle<Image>) -> Sprite {
@@ -20,6 +17,8 @@ pub fn piece_sprite(kind: PieceKind, color: PieceColor, texture: Handle<Image>) 
     }
 }
 
+/// The sheet is a 6x2 grid: columns King, Queen, Bishop, Knight, Rook, Pawn;
+/// row 0 white, row 1 black.
 fn piece_rect(kind: PieceKind, color: PieceColor) -> Rect {
     let col = match kind {
         PieceKind::King => 0.0,
@@ -35,8 +34,8 @@ fn piece_rect(kind: PieceKind, color: PieceColor) -> Rect {
         PieceColor::Black => 1.0,
     };
 
-    let cell_w = IMAGE_WIDTH / 6.0;
-    let cell_h = IMAGE_HEIGHT / 2.0;
+    let cell_w = ACTIVE_THEME.sheet_width / 6.0;
+    let cell_h = ACTIVE_THEME.sheet_height / 2.0;
 
     Rect {
         min: Vec2::new(col * cell_w, row * cell_h),
