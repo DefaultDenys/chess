@@ -5,6 +5,7 @@ mod debug;
 mod game;
 mod input;
 mod moves;
+mod promotion;
 mod rules;
 mod sound;
 mod theme;
@@ -34,8 +35,10 @@ fn main() {
         .add_systems(Update, input::handle_mouse)
         .add_systems(Startup, game::spawn_banner)
         .add_systems(Update, game::update_game_state)
+        .add_systems(Update, promotion::update_promotion_ui)
         .init_resource::<input::Selection>()
-        .init_resource::<game::GameState>();
+        .init_resource::<game::GameState>()
+        .init_resource::<promotion::Promotion>();
 
     if DEBUG_MODE {
         app.add_systems(Update, debug_piece_bounds);
