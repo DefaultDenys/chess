@@ -3,9 +3,111 @@ use crate::{
     chess_pieces::{PieceColor, PieceKind},
 };
 
-// Is A from -> to B a legal pseudo-legal move? (Ignores check, castling,
-// en passant and promotion for now.) Turn ownership is checked by the caller.
+/// The state of the game for the side to move.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum GameOutcome {
+    #[default]
+    Ongoing,
+    Checkmate { winner: PieceColor },
+    Stalemate,
+}
+
+/// Evaluate the position for whoever is to move (`board.turn`).
+pub fn outcome(board: &Board) -> GameOutcome {
+    let color = board.turn;
+    if has_any_legal_move(board, color) {
+        GameOutcome::Ongoing
+    } else if is_in_check(board, color) {
+        GameOutcome::Checkmate {
+            winner: opposite(color),
+        }
+    } else {
+        GameOutcome::Stalemate
+    }
+}
+
+/// Does `color` have at least one legal move anywhere on the board?
+pub fn has_any_legal_move(board: &Board, color: PieceColor) -> bool {
+    for file in 0..BOARD_SQUARES {
+        for rank in 0..BOARD_SQUARES {
+            if let Some(piece) = board.get(file as usize, rank as usize)
+                && piece.color == color
+                && !legal_moves(board, (file, rank)).is_empty()
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn opposite(color: PieceColor) -> PieceColor {
+    match color {
+        PieceColor::White => PieceColor::Black,
+        PieceColor::Black => PieceColor::White,
+    }
+}
+
+/// Fully legal: a pseudo-legal move that doesn't leave your own king in check.
 pub fn is_legal_move(board: &Board, from: (i32, i32), to: (i32, i32)) -> bool {
+    if !is_pseudo_legal(board, from, to) {
+        return false;
+    }
+    let Some(piece) = board.get(from.0 as usize, from.1 as usize) else {
+        return false;
+    };
+    !leaves_king_in_check(board, from, to, piece.color)
+}
+
+/// Would making `from -> to` leave `color`'s own king in check?
+fn leaves_king_in_check(
+    board: &Board,
+    from: (i32, i32),
+    to: (i32, i32),
+    color: PieceColor,
+) -> bool {
+    let mut next = board.clone();
+    let moving = next.get(from.0 as usize, from.1 as usize);
+    next.set(from.0 as usize, from.1 as usize, None);
+    next.set(to.0 as usize, to.1 as usize, moving);
+    is_in_check(&next, color)
+}
+
+/// Is `color`'s king currently attacked by any enemy piece?
+pub fn is_in_check(board: &Board, color: PieceColor) -> bool {
+    let Some(king) = find_king(board, color) else {
+        return false;
+    };
+    for file in 0..BOARD_SQUARES {
+        for rank in 0..BOARD_SQUARES {
+            if let Some(piece) = board.get(file as usize, rank as usize)
+                && piece.color != color
+                && is_pseudo_legal(board, (file, rank), king)
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+pub fn find_king(board: &Board, color: PieceColor) -> Option<(i32, i32)> {
+    for file in 0..BOARD_SQUARES {
+        for rank in 0..BOARD_SQUARES {
+            if let Some(piece) = board.get(file as usize, rank as usize)
+                && piece.kind == PieceKind::King
+                && piece.color == color
+            {
+                return Some((file, rank));
+            }
+        }
+    }
+    None
+}
+
+/// Is A from -> to B a legal pseudo-legal move? (Ignores check, castling,
+/// en passant and promotion for now.) Turn ownership is checked by the caller.
+pub fn is_pseudo_legal(board: &Board, from: (i32, i32), to: (i32, i32)) -> bool {
     if from == to || !on_board(to.0, to.1) {
         return false; // same square or off board
     }

@@ -2,6 +2,7 @@ mod board;
 mod chess_initializer;
 mod chess_pieces;
 mod debug;
+mod game;
 mod input;
 mod moves;
 mod rules;
@@ -25,11 +26,16 @@ fn main() {
         .insert_resource(Board::starting_position())
         .add_systems(Startup, sound::setup_sounds)
         .add_systems(Startup, input::spawn_highlight)
+        .add_systems(Startup, input::spawn_check_highlight)
         .add_systems(Startup, input::setup_indicators)
         .add_systems(Update, input::update_highlight)
+        .add_systems(Update, input::update_check_highlight)
         .add_systems(Update, input::update_indicators)
         .add_systems(Update, input::handle_mouse)
-        .init_resource::<input::Selection>();
+        .add_systems(Startup, game::spawn_banner)
+        .add_systems(Update, game::update_game_state)
+        .init_resource::<input::Selection>()
+        .init_resource::<game::GameState>();
 
     if DEBUG_MODE {
         app.add_systems(Update, debug_piece_bounds);

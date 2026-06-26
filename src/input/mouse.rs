@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::board::game_board::Board;
+use crate::game::GameState;
 use crate::moves::{PieceQuery, try_move};
 use crate::sound::SoundAssets;
 use crate::utils::coordinate_utils;
@@ -20,7 +21,12 @@ pub fn handle_mouse(
     mut selection: ResMut<Selection>,
     mut pieces: PieceQuery,
     sounds: Res<SoundAssets>,
+    game_state: Res<GameState>,
 ) {
+    if game_state.is_over() {
+        return;
+    }
+
     let window = window.into_inner();
     let (camera, camera_transform) = camera.into_inner();
 
