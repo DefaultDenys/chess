@@ -38,8 +38,9 @@ pub fn update_indicators(
     assets: Res<IndicatorAssets>,
     existing: Query<Entity, With<MoveIndicator>>,
 ) {
-    // Only rebuild when the selection actually changed.
-    if !selection.is_changed() {
+    // Rebuild when the selection changes, or when the board changes (e.g. a move
+    // that delivers check, so the king's escape squares appear right away).
+    if !selection.is_changed() && !board.is_changed() {
         return;
     }
 
@@ -48,7 +49,14 @@ pub fn update_indicators(
         commands.entity(entity).despawn();
     }
 
-    let Some(from) = selection.selected else {
+    // Show the selected piece's moves, or — if in check with nothing selected —
+    // the king's escape squares.
+    let from = match selection.selected {
+        Some(square) => Some(square),
+        None if rules::is_in_check(&board, board.turn) => rules::find_king(&board, board.turn),
+        None => None,
+    };
+    let Some(from) = from else {
         return;
     };
 
@@ -68,3 +76,4 @@ pub fn update_indicators(
         ));
     }
 }
+

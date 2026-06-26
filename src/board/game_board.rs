@@ -2,7 +2,7 @@ use crate::board::chess_board::BOARD_SQUARES;
 use crate::chess_pieces::{Piece, PieceColor, PieceKind};
 use bevy::prelude::*;
 
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 pub struct Board {
     /// Indexed as squares[file][rank] (file = column 0..8, rank = row 0..8).
     squares: [[Option<Piece>; BOARD_SQUARES as usize]; BOARD_SQUARES as usize],
