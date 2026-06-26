@@ -1,8 +1,10 @@
 use bevy::prelude::*;
 
 use crate::board::game_board::Board;
+use crate::chess_pieces::{BoardPosition, Piece, PieceColor, piece_sprites};
 use crate::game::GameState;
 use crate::moves::{PieceQuery, try_move};
+use crate::promotion::{self, Promotion};
 use crate::sound::SoundAssets;
 use crate::utils::coordinate_utils;
 
@@ -21,6 +23,8 @@ pub fn handle_mouse(
     mut selection: ResMut<Selection>,
     mut pieces: PieceQuery,
     sounds: Res<SoundAssets>,
+    asset_server: Res<AssetServer>,
+    mut promotion: ResMut<Promotion>,
     game_state: Res<GameState>,
 ) {
     if game_state.is_over() {
@@ -38,6 +42,50 @@ pub fn handle_mouse(
     };
     let square = coordinate_utils::world_to_square(world);
 
+    // --- Promotion: while a choice is pending, a click picks the piece and
+    // normal board interaction is suspended. ---
+    if let Some(pending) = promotion.pending {
+        if mouse.just_pressed(MouseButton::Left)
+            && let Some(clicked) = square
+            && let Some(kind) = promotion::clicked_choice(pending, clicked)
+        {
+            let piece = Piece {
+                color: pending.color,
+                kind,
+                has_moved: true,
+            };
+            board.set(pending.square.0 as usize, pending.square.1 as usize, Some(piece));
+
+            // Replace the pawn entity with the chosen piece.
+            for (entity, pos, _) in pieces.iter() {
+                if pos.file == pending.square.0 && pos.rank == pending.square.1 {
+                    commands.entity(entity).despawn();
+                }
+            }
+            let texture = piece_sprites::load_pieces_texture(&asset_server);
+            commands.spawn((
+                piece,
+                BoardPosition {
+                    file: pending.square.0,
+                    rank: pending.square.1,
+                },
+                piece_sprites::piece_sprite(kind, pending.color, texture),
+                Transform::from_translation(coordinate_utils::square_to_world(
+                    pending.square.0,
+                    pending.square.1,
+                    1.0,
+                )),
+            ));
+
+            board.turn = match board.turn {
+                PieceColor::White => PieceColor::Black,
+                PieceColor::Black => PieceColor::White,
+            };
+            promotion.pending = None;
+        }
+        return;
+    }
+
     // --- Press: select your own piece, or try to complete a click-to-move ---
     if mouse.just_pressed(MouseButton::Left) {
         match square {
@@ -50,7 +98,15 @@ pub fn handle_mouse(
                 } else if let Some(from) = selection.selected {
                     // Move only if legal; otherwise keep the selection so the
                     // player can pick a different target.
-                    if try_move(&mut commands, &mut board, &mut pieces, &sounds, from, (file, rank)) {
+                    if try_move(
+                        &mut commands,
+                        &mut board,
+                        &mut pieces,
+                        &sounds,
+                        &mut promotion,
+                        from,
+                        (file, rank),
+                    ) {
                         selection.clear();
                     }
                 } else {
@@ -87,6 +143,7 @@ pub fn handle_mouse(
                         &mut board,
                         &mut pieces,
                         &sounds,
+                        &mut promotion,
                         (from_file, from_rank),
                         (file, rank),
                     ),

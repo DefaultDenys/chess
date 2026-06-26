@@ -48,8 +48,12 @@ fn opposite(color: PieceColor) -> PieceColor {
     }
 }
 
-/// Fully legal: a pseudo-legal move that doesn't leave your own king in check.
+/// Fully legal: a pseudo-legal move that doesn't leave your own king in check
+/// (castling is handled separately, as its own special move).
 pub fn is_legal_move(board: &Board, from: (i32, i32), to: (i32, i32)) -> bool {
+    if is_castle_move(board, from, to) {
+        return is_legal_castle(board, from, to);
+    }
     if !is_pseudo_legal(board, from, to) {
         return false;
     }
@@ -57,6 +61,65 @@ pub fn is_legal_move(board: &Board, from: (i32, i32), to: (i32, i32)) -> bool {
         return false;
     };
     !leaves_king_in_check(board, from, to, piece.color)
+}
+
+/// Is this a castling attempt (the king moving two squares sideways)?
+fn is_castle_move(board: &Board, from: (i32, i32), to: (i32, i32)) -> bool {
+    matches!(board.get(from.0 as usize, from.1 as usize), Some(p) if p.kind == PieceKind::King)
+        && (to.0 - from.0).abs() == 2
+        && to.1 == from.1
+}
+
+/// Full castling legality: unmoved king and rook, empty squares between them,
+/// and the king not in check / not passing through / not landing on an attacked square.
+fn is_legal_castle(board: &Board, from: (i32, i32), to: (i32, i32)) -> bool {
+    let Some(king) = board.get(from.0 as usize, from.1 as usize) else {
+        return false;
+    };
+    if king.kind != PieceKind::King || king.has_moved {
+        return false;
+    }
+    let color = king.color;
+    let rank = from.1;
+    let home_rank = match color {
+        PieceColor::White => 0,
+        PieceColor::Black => 7,
+    };
+    if rank != home_rank || from.0 != 4 {
+        return false;
+    }
+
+    let kingside = to.0 > from.0;
+    let (rook_file, between, king_path): (i32, &[i32], &[i32]) = if kingside {
+        (7, &[5, 6], &[4, 5, 6])
+    } else {
+        (0, &[1, 2, 3], &[4, 3, 2])
+    };
+
+    // The rook must be present, the same color, and unmoved.
+    let Some(rook) = board.get(rook_file as usize, rank as usize) else {
+        return false;
+    };
+    if rook.kind != PieceKind::Rook || rook.color != color || rook.has_moved {
+        return false;
+    }
+
+    // Squares between king and rook must be empty.
+    for &file in between {
+        if board.get(file as usize, rank as usize).is_some() {
+            return false;
+        }
+    }
+
+    // King must not be in check, nor cross / land on an attacked square.
+    let enemy = opposite(color);
+    for &file in king_path {
+        if is_attacked(board, (file, rank), enemy) {
+            return false;
+        }
+    }
+
+    true
 }
 
 /// Would making `from -> to` leave `color`'s own king in check?
@@ -69,26 +132,63 @@ fn leaves_king_in_check(
     let mut next = board.clone();
     let moving = next.get(from.0 as usize, from.1 as usize);
     next.set(from.0 as usize, from.1 as usize, None);
+
+    // En passant: also remove the passed pawn (it sits beside the target square,
+    // which is itself empty in this capture) so a discovered check is detected.
+    if let Some(p) = moving
+        && p.kind == PieceKind::Pawn
+        && from.0 != to.0
+        && next.get(to.0 as usize, to.1 as usize).is_none()
+    {
+        next.set(to.0 as usize, from.1 as usize, None);
+    }
+
     next.set(to.0 as usize, to.1 as usize, moving);
     is_in_check(&next, color)
 }
 
-/// Is `color`'s king currently attacked by any enemy piece?
+/// Is `color`'s king currently attacked?
 pub fn is_in_check(board: &Board, color: PieceColor) -> bool {
-    let Some(king) = find_king(board, color) else {
-        return false;
-    };
+    match find_king(board, color) {
+        Some(king) => is_attacked(board, king, opposite(color)),
+        None => false,
+    }
+}
+
+/// Is `square` attacked by any piece of color `by`? Unlike how it moves, a pawn
+/// attacks its two forward diagonals regardless of what's on them.
+fn is_attacked(board: &Board, square: (i32, i32), by: PieceColor) -> bool {
     for file in 0..BOARD_SQUARES {
         for rank in 0..BOARD_SQUARES {
             if let Some(piece) = board.get(file as usize, rank as usize)
-                && piece.color != color
-                && is_pseudo_legal(board, (file, rank), king)
+                && piece.color == by
+                && attacks(board, (file, rank), square)
             {
                 return true;
             }
         }
     }
     false
+}
+
+fn attacks(board: &Board, from: (i32, i32), to: (i32, i32)) -> bool {
+    let Some(piece) = board.get(from.0 as usize, from.1 as usize) else {
+        return false;
+    };
+    match piece.kind {
+        PieceKind::Pawn => {
+            let dir = match piece.color {
+                PieceColor::White => 1,
+                PieceColor::Black => -1,
+            };
+            (to.0 - from.0).abs() == 1 && to.1 - from.1 == dir
+        }
+        PieceKind::Knight => is_knight_move(from, to),
+        PieceKind::King => is_king_move(from, to),
+        PieceKind::Rook => is_rook_move(board, from, to),
+        PieceKind::Bishop => is_bishop_move(board, from, to),
+        PieceKind::Queen => is_rook_move(board, from, to) || is_bishop_move(board, from, to),
+    }
 }
 
 pub fn find_king(board: &Board, color: PieceColor) -> Option<(i32, i32)> {
@@ -224,10 +324,14 @@ fn is_pawn_move(board: &Board, color: PieceColor, from: (i32, i32), to: (i32, i3
         return true;
     }
 
-    // Diagonal capture (an enemy must be there).
+    // Diagonal capture: an enemy on the target square, or en passant onto the
+    // recorded square (which is itself empty in that case).
     if df.abs() == 1 && dr == dir {
         if let Some(t) = target {
             return t.color != color;
+        }
+        if board.en_passant == Some(to) {
+            return true;
         }
     }
 
@@ -238,11 +342,45 @@ fn is_pawn_move(board: &Board, color: PieceColor, from: (i32, i32), to: (i32, i3
 mod tests {
     use super::*;
     use crate::board::game_board::Board;
+    use crate::chess_pieces::{Piece, PieceColor, PieceKind};
 
     #[test]
     fn pawn_double_step_from_start() {
         let board = Board::starting_position();
         assert!(is_legal_move(&board, (4, 1), (4, 3))); // e2 -> e4
+    }
+
+    #[test]
+    fn castling_kingside_when_path_clear() {
+        let mut board = Board::starting_position();
+        board.set(5, 0, None); // clear f1 bishop
+        board.set(6, 0, None); // clear g1 knight
+        assert!(is_legal_move(&board, (4, 0), (6, 0))); // e1 -> g1, O-O
+    }
+
+    #[test]
+    fn castling_blocked_by_piece() {
+        let mut board = Board::starting_position();
+        board.set(6, 0, None); // clear only g1; f1 bishop still blocks
+        assert!(!is_legal_move(&board, (4, 0), (6, 0)));
+    }
+
+    #[test]
+    fn en_passant_capture_is_legal() {
+        let mut board = Board::starting_position();
+        board.set(4, 4, Some(Piece { color: PieceColor::White, kind: PieceKind::Pawn, has_moved: true }));
+        board.set(3, 4, Some(Piece { color: PieceColor::Black, kind: PieceKind::Pawn, has_moved: true }));
+        board.en_passant = Some((3, 5)); // black pawn just double-stepped d7-d5
+        assert!(is_legal_move(&board, (4, 4), (3, 5))); // e5 x d6 e.p.
+    }
+
+    #[test]
+    fn pawn_reaching_last_rank_is_legal() {
+        let mut board = Board::starting_position();
+        board.set(0, 6, None); // clear a black pawn out of the way
+        board.set(0, 6, Some(Piece { color: PieceColor::White, kind: PieceKind::Pawn, has_moved: true }));
+        board.set(0, 7, None); // clear a8 rook so the pawn can advance
+        assert!(is_legal_move(&board, (0, 6), (0, 7))); // a7 -> a8 (promotes)
     }
 
     #[test]

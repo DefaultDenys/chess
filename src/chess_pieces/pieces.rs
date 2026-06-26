@@ -20,6 +20,7 @@ pub enum PieceKind {
 pub struct Piece {
     pub color: PieceColor,
     pub kind: PieceKind,
+    pub has_moved: bool,
 }
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
